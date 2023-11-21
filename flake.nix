@@ -18,19 +18,31 @@
         pkgs = import nixpkgs {
           inherit system;
         };
-
         craneLib = crane.lib.${system};
+
+        synctexFilter = path: _type: builtins.match "^synctex" path != null;
+        synctexOrCargo = path: type:
+          (synctexFilter path type) || (craneLib.filterCargoSources path type);
+
         my-crate = craneLib.buildPackage {
-          src = craneLib.cleanCargoSource (craneLib.path ./.);
+          # src = pkgs.lib.cleanSourceWith {
+          #   src = craneLib.path ./.;
+          #   filter = synctexOrCargo;
+          # };
+          src = craneLib.path ./.;
           strictDeps = true;
 
           buildInputs = with pkgs; [
             clang
+            libclang
+            llvm
+            pkg-config
           ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
             # Additional darwin specific inputs can be set here
             pkgs.libiconv
           ];
 
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
           # Additional environment variables can be set directly
           # MY_CUSTOM_VAR = "some value";
         };
